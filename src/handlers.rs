@@ -1,6 +1,9 @@
-use rocket::*;
+use rocket::{
+    get,
+    fs::NamedFile
+};
 
 #[get("/")]
-pub fn index() -> &'static str {
-    "Hello world!"
+pub async fn index() -> Option<NamedFile> {
+    NamedFile::open("static/index.html").await.ok()
 }
