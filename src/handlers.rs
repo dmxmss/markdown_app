@@ -1,16 +1,22 @@
 use rocket::{
-    get,
-    fs::{NamedFile, TempFile}, 
-    State
+    fs::{NamedFile, TempFile}, get, http::Status, State, form::Form
 };
-use crate::adapter::DbPort;
+use crate::adapter::DbAdapter;
 
 #[get("/")]
 pub async fn index() -> Option<NamedFile> {
     NamedFile::open("static/index.html").await.ok()
 }
 
-#[post("/upload", format = "plain", data = "<upload>")]
-pub async fn upload(upload: TempFile<'_>, db_port: &State<DbPort>) -> std::io::Result<()> {
+// TODO handle TempFile in FromRequest
+#[post("/upload", format = "multipart/form-data", data = "<upload>")]
+pub async fn upload(upload: TempFile<'_>, adapter: &State<DbAdapter>) -> Result<(), Status> {
+    if let Err(e) = adapter.create_note(
+        upload.name().unwrap_or(""), 
+        format!("{upload:?}").as_str()
+    ).await {
+        eprintln!("{e}");
+    }
+
     Ok(()) 
 }

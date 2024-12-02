@@ -1,14 +1,11 @@
 #[macro_use] extern crate rocket;
 
-use std::sync::Arc;
-use markdown_app::fairings::setup;
-use markdown_app::adapter::{PgAdapter, DbPort};
+use markdown_app::fairings::{base_routes, static_server, db_init};
 
 #[launch]
-pub fn rocket() -> _ {
-    let port = DbPort::new(Arc::new(PgAdapter::new()));
-
+pub async fn rocket() -> _ {
     rocket::build()
-        .attach(setup())
-        .manage(port)
+        .attach(base_routes())
+        .attach(static_server())
+        .attach(db_init())
 }

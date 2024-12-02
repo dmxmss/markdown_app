@@ -1,43 +1,42 @@
-use std::sync::Arc;
+use crate::result::Result;
+use tokio_postgres::NoTls;
+use rocket::tokio;
 
-pub trait DbAdapter {
-
+pub enum DbAdapter {
+    Pg(tokio_postgres::Client),
+    Mock
 }
 
-pub struct PgAdapter {
+impl DbAdapter {
+    pub async fn tokio_postgres(login: &str) -> Result<DbAdapter> {
+        let (client, connection) = tokio_postgres::connect(login, NoTls).await?;
 
-}
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                eprintln!("{e}");
+            }
+        });
 
-impl DbAdapter for PgAdapter {
-
-}
-
-impl PgAdapter {
-    pub fn new() -> PgAdapter {
-        PgAdapter {}
+        Ok(DbAdapter::Pg(client))
     }
-}
 
-pub struct MockPgAdapter {
-
-}
-
-impl DbAdapter for MockPgAdapter {
-
-}
-
-impl MockPgAdapter {
-    pub fn new() -> MockPgAdapter {
-        MockPgAdapter {}
+    pub fn mock() -> DbAdapter {
+        DbAdapter::Mock
     }
-}
 
-pub struct DbPort {
-    adapter: Arc<dyn DbAdapter + Sync + Send>
-}
+    pub async fn create_note(&self, name: &str, contents: &str) -> Result<()> {
+        match &self {
+            DbAdapter::Pg(client) => {
+                client.query(r#"
+                    insert into notes(name, contents)
+                    values ($1::TEXT, $2::TEXT)
+                "#, &[&name, &contents]).await?;
+            },
+            DbAdapter::Mock => {
+                return Ok(())
+            }
+        }
 
-impl DbPort {
-    pub fn new(adapter: Arc<dyn DbAdapter + Send + Sync>) -> DbPort {
-        DbPort { adapter }
+        Ok(())
     }
 }
