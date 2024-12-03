@@ -1,7 +1,10 @@
 use rocket::{
-    fs::{NamedFile, TempFile}, get, http::Status, State, form::Form
+    fs::NamedFile, get, http::Status, State 
 };
-use crate::adapter::DbAdapter;
+use crate::{
+    adapter::DbAdapter,
+    parse_file::ParseFile
+};
 
 #[get("/")]
 pub async fn index() -> Option<NamedFile> {
@@ -9,14 +12,12 @@ pub async fn index() -> Option<NamedFile> {
 }
 
 // TODO handle TempFile in FromRequest
-#[post("/upload", format = "multipart/form-data", data = "<upload>")]
-pub async fn upload(upload: TempFile<'_>, adapter: &State<DbAdapter>) -> Result<(), Status> {
-    if let Err(e) = adapter.create_note(
-        upload.name().unwrap_or(""), 
-        format!("{upload:?}").as_str()
-    ).await {
-        eprintln!("{e}");
-    }
+#[post("/upload", format = "multipart/form-data", data = "<file>")]
+pub async fn upload<'r>(file: ParseFile<'r>, adapter: &State<DbAdapter>) -> Result<(), Status> {
+    adapter.create_note(
+        file.name,
+        file.contents
+    ).await?;
 
     Ok(()) 
 }

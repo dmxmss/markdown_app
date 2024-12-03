@@ -46,7 +46,7 @@ mod tests {
 
         let req = client.post("/upload")
             .header(ContentType::FormData)
-            .body(file);
+            .body(format!("test&{file}"));
 
         assert_eq!(req.dispatch().status(), Status::Ok);
     }
