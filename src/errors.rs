@@ -3,6 +3,7 @@ use std::{
     error
 };
 use rocket::http::Status;
+use rocket_db_pools::sqlx;
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -23,7 +24,7 @@ impl fmt::Display for ClientError {
 
 #[derive(Debug)]
 pub enum AppError {
-    Db(tokio_postgres::error::Error),
+    Db(sqlx::Error),
     Io(std::io::Error),
 }
 
@@ -38,36 +39,11 @@ impl fmt::Display for AppError {
     }
 }
 
-impl From<tokio_postgres::error::Error> for Error {
-    fn from(value: tokio_postgres::error::Error) -> Self {
-        Error::from(AppError::Db(value))
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(value: std::io::Error) -> Self {
-        Error::from(AppError::Io(value))
-    }
-}
-
 #[derive(Debug)]
 pub enum Error {
     App(AppError),
     Client(ClientError)
 }
-
-impl From<ClientError> for Error {
-    fn from(value: ClientError) -> Self {
-        Error::Client(value)
-    }
-}
-
-impl From<AppError> for Error {
-    fn from(value: AppError) -> Self {
-        Error::App(value)
-    }
-}
-
 impl error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -79,6 +55,12 @@ impl fmt::Display for Error {
     }
 }
 
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Error::from(AppError::Io(value))
+    }
+}
+
 impl From<Error> for Status {
     fn from(value: Error) -> Self {
         match value {
@@ -86,5 +68,23 @@ impl From<Error> for Status {
             Error::Client(ClientError::PayloadTooLarge) => Status::PayloadTooLarge,
             Error::Client(ClientError::InvalidUploadFormat) => Status::BadRequest,
         }
+    }
+}
+
+impl From<sqlx::Error> for Error {
+    fn from(value: sqlx::Error) -> Self {
+        Error::from(AppError::Db(value))
+    }
+}
+
+impl From<ClientError> for Error {
+    fn from(value: ClientError) -> Self {
+        Error::Client(value)
+    }
+}
+
+impl From<AppError> for Error {
+    fn from(value: AppError) -> Self {
+        Error::App(value)
     }
 }

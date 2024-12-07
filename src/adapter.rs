@@ -1,42 +1,15 @@
-use crate::result::Result;
-use tokio_postgres::NoTls;
-use rocket::tokio;
+use rocket::serde::{Deserialize, Serialize};
+use rocket_db_pools::{sqlx, Database};
 
-pub enum DbAdapter {
-    Pg(tokio_postgres::Client),
-    Mock
-}
+#[derive(Database)]
+#[database("markdown_app")]
+pub struct SqlxPg(sqlx::PgPool);
 
-impl DbAdapter {
-    pub async fn tokio_postgres(login: &str) -> Result<DbAdapter> {
-        let (client, connection) = tokio_postgres::connect(login, NoTls).await?;
-
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                eprintln!("{e}");
-            }
-        });
-
-        Ok(DbAdapter::Pg(client))
-    }
-
-    pub fn mock() -> DbAdapter {
-        DbAdapter::Mock
-    }
-
-    pub async fn create_note(&self, name: &str, contents: &str) -> Result<()> {
-        match &self {
-            DbAdapter::Pg(client) => {
-                client.query(r#"
-                    insert into notes(name, contents)
-                    values ($1::TEXT, $2::TEXT)
-                "#, &[&name, &contents]).await?;
-            },
-            DbAdapter::Mock => {
-                return Ok(())
-            }
-        }
-
-        Ok(())
-    }
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(crate = "rocket::serde")]
+pub struct Note {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<u32>,
+    name: String,
+    contents: String
 }
